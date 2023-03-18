@@ -1,0 +1,703 @@
+
+
+
+<html>
+
+<head>
+
+
+
+
+
+
+<link rel="stylesheet" type ="text/css" href="Horizonnomenue.css"> 
+
+<title>Map weather</title>
+
+      
+               
+<meta name = "viewport" content= "width=device-width, initial-scale=0.9">  
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.4.4/proj4.js"></script>
+
+<script src="https://code.highcharts.com/maps/highmaps.js"></script>
+<script src="https://code.highcharts.com/stock/modules/data.js"></script>
+<script src="https://code.highcharts.com/modules/marker-clusters.js"></script>
+<script src="https://code.highcharts.com/modules/coloraxis.js"></script>
+<script src="https://code.highcharts.com/maps/modules/accessibility.js"></script>
+
+
+
+<script src="https://code.highcharts.com/mapdata/custom/world.js"></script>
+
+
+
+
+
+</head>
+
+
+
+<div id="container" style="width:100%;min-height:25%; height:93%; overflow:hidden; margin: 0 auto" ></div>
+
+
+<body>
+
+
+ <div class="navbar"> 
+  <a href="index.html">Him</a> 
+
+  
+ </div>   
+
+</body>
+ 
+<script type="text/javascript">
+
+var nowday = new Date(Date.now()).toLocaleString().split(',')[0];
+var nowtime = new Date().toLocaleTimeString();
+
+
+
+(async () => {
+
+    const topology = await fetch(
+		 'https://code.highcharts.com/mapdata/custom/world.topo.json'
+		
+    ).then(response => response.json());
+
+    // Data structure: [iso_country_code, latitude, longitude, capital_city, linkurl, icon]
+    const newData = [
+ 
+		
+		['no', 59.9100, 10.7500 ,'OsloNorway', 'https://www.vg.no/'],
+
+		
+		//Asia
+		['id', -6.12, 106.77,  'Jakarta' , 'https://www.vg.no/'],
+	//	['kg', 42.86, 74.5,  'Bisjkek', 'https://www.vg.no/']
+		
+		//Africa
+		
+		['ug',0.34, 32.58 ,'Uganda', 'https://www.vg.no/'],
+		['tz',-6.17, 35.73 ,'Tanzania', 'https://www.nrk.no/'],		
+		
+    ];
+
+
+
+
+
+function myround( value,  places) {
+    var scale = Math.pow(10, places);
+    return Math.round(value * scale) / scale;
+}
+
+
+
+//same same as above
+function myround1 (x) { 
+ return Number.parseFloat(x).toFixed(1);
+}
+
+
+
+//ny
+  async function getTemp(point, countries, capitals) {
+
+        const json = await fetch(
+            'https://api.met.no/weatherapi/locationforecast/2.0/?' +
+                `lat=${point[1]}&lon=${point[2]}`
+        ).then(response => response.json());
+
+        const temp = json.properties.timeseries[0].data.instant.details
+                .air_temperature,
+            value = parseFloat(temp, 2);
+			
+			
+			const wind = json.properties.timeseries[0].data.instant.details
+                .wind_speed,
+            valuew = parseFloat(wind, 1);
+			
+			const precip = json.properties.timeseries[0].data.next_1_hours.details
+                .precipitation_amount,
+            valuep = parseFloat(precip, 2);
+			
+			
+			const cloud = json.properties.timeseries[0].data.instant.details
+                .cloud_area_fraction,
+            valuec = parseFloat(cloud, 2);
+			
+			
+			//wind_from_direction
+			const windfrom = json.properties.timeseries[0].data.instant.details
+                .wind_from_direction,
+            valuewf = parseFloat(windfrom, 1);
+			
+					
+			
+			
+
+        const country = {
+            'hc-key': point[0],
+            value
+        };
+        const capital = {
+            name: point[3],
+			iso: point[0],
+            lat: point[1],
+            lon: point[2],
+            url: point[4],   // my link
+
+            colorKey: 'y',
+			color: 'red',
+            y: (value),  //not needed ??
+		    temp: parseFloat(value) || 'Deg',
+			precip: parseFloat(valuep) || 'mm',
+			wind: parseFloat(valuew) || 'Wind',
+			cloud: parseFloat(valuec) || '%',
+			windfrom: parseFloat(valuewf) || 'Deg',
+			
+			
+			
+			
+			
+          custom: {
+               label: (value) 
+           }
+           
+        };
+
+        countries.addPoint(country);
+        capitals.addPoint(capital);
+    }
+
+
+// Create the chart
+Highcharts.mapChart('container', {
+    chart: {
+//plotBackgroundImage: // MyImage,
+        map: 'custom/world',//'custom/europe', //'custom/asia', 'custom/africa'},
+        animation: true,
+        spacingTop: 100,  //does not hurt
+        
+		
+		 events: {
+                load: function () {
+                    const countries = this.series[0],
+                    capitals = this.series[1];
+                    newData.forEach(elem => getTemp(elem, countries, capitals));
+                }
+            }	
+    },
+
+
+
+
+
+	  tooltip: {
+	   style: {
+        pointerEvents: 'all'
+      },
+            useHTML: true,
+			enabled: true,
+			stickOnContact: true,
+            headerFormat: '<b>{point.key}  {point.hc-key} {point.hc-key}  {point.name} Unsupported country ok</b>',
+           pointFormat: '{point.hc-key}: {point.color}' 
+		   //pointFormat: '' 
+        },
+	
+	
+	
+    plotOptions: {
+      map: {
+        tooltip: {
+          pointFormat: '{point.name}'
+        }
+      },
+	  
+	  
+	  series: {
+	   states: {
+                      inactive: {
+                        opacity: 1
+                      }
+                    },
+	   },
+	  
+	  
+      mappoint: {
+	  
+	  
+	  //tooltip for supported countries
+tooltip: {
+		useHTML: true,
+		stickOnContact: true,
+// ok name headerFormat: '<span style="color:{point.color}">\u25CF</span> {point.key}:<br/>',    
+
+//headerFormat: '<span style="color:{point.color}">\u25CF</span>{point.key}:<br/>',    
+
+headerFormat:'<img src="https://www.soeberg.info/images/'+'no' +'.png">' +'<br/>',
+//headerFormat:'<img src="https://www.soeberg.info/images/'+this.iso +'.png">' +'<br/>',
+
+//no success headerFormat:'<img src=url('+this.icon+')> Data' + '<br/>',	
+ 		
+		//headerFormat: '',
+		//headerFormat:eval('<img src="'+this.icon+'">iconData') + '<br/>',		
+		pointFormatter: function () {
+		//var icon = '<img src="'+this.icon+'">iconData' ;
+			
+       var value = parseFloat(this.temp,0) ? this.temp + '&#8451'  : 'Na';
+	   var valuew = myround(this.wind,2) ? this.wind + 'ms' : 'Na';
+	   var valuep = parseFloat(this.precip,1) ? this.precip + 'mm' : '0mm';
+	   var valuec = parseFloat(this.cloud,1) ? this.cloud + '%' : '0%';
+	   var valuewf = parseFloat(this.windfrom,1) ? this.windfrom + '°' : '';
+
+ //return "<a href='https://highcharts.com' target='_blank'>Click Me</a>";
+
+return 'Temp: <b>' + value + '</b>' + '<br> Wind: <b>' + valuew + '</b>' + ' from: ' + '<b>' + valuewf + '</b>' + '<br>' + 'Precip: ' + '<b>' +  valuep+'</b>'  + ' Cloudy: '+ '<b>' +valuec +'</b><br>'
+//+ '<a href='+this.url+'>' + this.url+ '</a><br>'
+//+ this.icon + '<br>'  //the icon I try to show
++ '<a href=./forecast.html?lat=58&lon=7&alt=0&place='+this.name+'>' + 'Local Forecest</a><br>' 
++ '<a href=./forecast.html?lat='+this.lat+'&lon='+this.lon+'&alt=0&place='+this.name + '>Forecst '+this.iso + ' ::'+   this.name+'</a>' ;
+
+       },
+	   },
+	  
+	  
+	  
+	
+			}
+			
+		},
+
+
+
+
+
+
+    title: {
+	 floating: true,
+     align: 'center',
+     x: 0,
+     y: 45,
+    text: 'When Special Places Matters',
+    },
+ subtitle: {
+ floating: true,
+     align: 'center',
+     x: 0,
+     y: 65,
+	text: 'Last update :'+nowday + ' '+ nowtime
+    },
+
+    mapNavigation: {
+        enabled: true,
+        buttonOptions: {
+            verticalAlign: 'bottom'
+        }
+    },
+    
+     mapView: {
+           // padding: ['40%', '2%', '2%', '40%']
+        },
+    
+     
+    
+    
+
+    colorAxis: {
+        min: -15,
+        max: 35,
+        labels: {
+			format: '{value}'//+  '&#8451'
+        },
+        stops: [
+            [0, '#0000ff'],
+            [0.2, '#6da5ff'],
+            [0.4, '#6A9325'],
+
+            [0.6, '#ffff00'],
+            [0.8, '#ff9a00'],
+            [1, '#ff0000']
+        ]
+    },
+
+    legend: {
+        title: {
+            text: 'Celsius Degrees ' + '&#8451'
+        }
+    },
+	
+	
+	
+	
+		
+	 series: [{
+	 
+    
+	//unsupported countried
+	//name: 'Not Supported Countries',
+/*
+	  tooltip: {
+            useHTML: true,
+			enabled: true,
+			stickOnContact: false, //true,
+            headerFormat: '<b>{point.key}  {point.hc-key}</b>',
+           pointFormat: '{point.hc-key}: {point.color}' 
+		   //pointFormat: '' 
+        },
+	*/
+
+            allAreas: false,           
+            //allAreas: false,
+          
+          data:[
+          
+          //   {
+          //  'hc-key': "cn",			//"info": 'test info re china.',            "value": -19
+       // },
+        
+        
+     
+		
+		//aftica
+		  {            "hc-key": "ng",            "color": 'Silver'		   },
+		  
+		  
+	
+		  
+		  {          "hc-key": "st",            "color": 'Silver'       },		
+		 {            "hc-key": "tz",           "color": 'Silver'        },
+		 {            "hc-key": "sl",          "color": 'Silver'        },		
+		{            "hc-key": "gw",            "color": 'Silver'        },
+		{            "hc-key": "cv",            "color": 'Silver'       },
+		
+		
+		
+			
+		   
+		   {            "hc-key": "sc",            "color": 'Silver'       },
+		   {            "hc-key": "tn",            "color": 'Silver'      },
+		   {            "hc-key": "mg",           "color": 'Silver'        },
+		   {            "hc-key": "ke",           "color": 'Silver'       },
+		   {            "hc-key": "tz",            "color": 'Silver'       },
+		 
+// ok hit	 
+		   
+		   {            "hc-key": "cd",           "color": 'Silver'       },
+		   {            "hc-key": "mr",            "color": 'Silver'        },
+		   {            "hc-key": "dz",             "color": 'Silver'       },
+		   {            "hc-key": "er",            "color": 'Silver'        },
+		   {            "hc-key": "gq",           "color": 'Silver'       },
+		
+	//ok hit		
+		
+	    //   {            "hc-key": "mu",            "color": 'Silver'      }, mauritus too small
+		   {            "hc-key": "sn",            "color": 'Silver'        },
+		   {            "hc-key": "km",           "color": 'Silver'       },
+		   {            "hc-key": "et",             "color": 'Silver'        },
+	   //   {            "hc-key": "ci",           "color": 'Silver'       },
+		
+			
+
+	  	 {            "hc-key": "gh",            "color": 'Silver'        },
+		   {            "hc-key": "zm",            "color": 'Silver'       },
+		   {            "hc-key": "na",            "color": 'Silver'        },
+		   {            "hc-key": "rw",           "color": 'Silver'       },
+		   {            "hc-key": "sx",             "color": 'Silver'      },
+		   
+		    {            "hc-key": "so",           "color": 'Silver'       },
+		   {            "hc-key": "cm",            "color": 'Silver'       },
+		   {            "hc-key": "cg",            "color": 'Silver'       },
+		   {            "hc-key": "eh",             "color": 'Silver'        },
+		   {            "hc-key": "bj",             "color": 'Silver'      },
+		   
+		   
+		
+		   
+		   
+		    {            "hc-key": "bf",           "color": 'Silver'         },
+		   {            "hc-key": "tg",           "color": 'Silver'        },
+		   {            "hc-key": "ne",            "color": 'Silver'        },
+		   {            "hc-key": "ly",           "color": 'Silver'        },
+		   {            "hc-key": "lr",            "color": 'Silver'        },
+		   
+	   
+		   
+		   {            "hc-key": "mw",           "color": 'Silver'         },
+		   {            "hc-key": "gm",          "color": 'Silver'        },
+		   {            "hc-key": "td",          "color": 'Silver'        },
+		   {            "hc-key": "ga",           "color": 'Silver'         },
+		   {            "hc-key": "dj",            "color": 'Silver'        },
+		   
+		 
+	 
+		
+		   {            "hc-key": "bi",          "color": 'Silver'       },
+		   {            "hc-key": "ao",          "color": 'Silver'         },
+		   {            "hc-key": "gn",          "color": 'Silver'      },
+		   {            "hc-key": "zw",          "color": 'Silver'        },
+		   {            "hc-key": "za",          "color": 'Silver'       },
+		   
+		   
+		
+		
+		   {            "hc-key": "mz",          "color": 'Silver'         },
+		   {            "hc-key": "sz",          "color": 'Silver'        },
+		   {            "hc-key": "ml",            "color": 'Silver'       },
+		   {            "hc-key": "bw",           "color": 'Silver'        },
+		   {            "hc-key": "sd",          "color": 'Silver'         },
+		   
+		
+		
+		
+		   {            "hc-key": "ma",            "color": 'Silver'        },
+		   {            "hc-key": "eg",          "color": 'Silver'        },
+		   {            "hc-key": "ls",          "color": 'Silver'       },
+		   {            "hc-key": "ss",         "color": 'Silver'        },
+		   {            "hc-key": "cf",          "color": 'Silver'        },
+		   
+		   
+		
+		
+		
+		   
+		   //asia
+		   
+		   	
+		
+		
+		   {            "hc-key": "ir",           "color": 'Silver'        },
+		   {            "hc-key": "ph",           "color": 'Silver'       },
+		   {            "hc-key": "sa",          "color": 'Silver'        },
+		   {            "hc-key": "jp",            "color": 'Silver'         },
+		   {            "hc-key": "th",        "color": 'Silver'       },
+		   {            "hc-key": "om",          "color": 'Silver'        },   
+		   
+		   
+		   {            "hc-key": "ir",           "color": 'Silver'         },
+		   {            "hc-key": "ph",            "color": 'Silver'        },
+		   {            "hc-key": "ye",         "color": 'Silver'        },
+		   {            "hc-key": "in",        "color": 'Silver'         },
+		   {            "hc-key": "kr",           "color": 'Silver'    },
+		   {            "hc-key": "bd",          "color": 'Silver'       },   
+		   
+		    
+		   {            "hc-key": "sp",            "color": 'Silver'        },
+		   {            "hc-key": "bd",           "color": 'Silver'        },
+		   {            "hc-key": "cn",            "color": 'Silver'       },
+		   {            "hc-key": "bh",           "color": 'Silver'         },
+		   {            "hc-key": "mm",           "color": 'Silver'      },
+		   {            "hc-key": "id",           "color": 'Silver'        },  
+		   
+		   
+		   
+		   {            "hc-key": "sg",           "color": 'Silver'       },
+		   {            "hc-key": "ru",            "color": 'gray'        },
+		   {            "hc-key": "sh",             "color": 'gray'       },
+		   {            "hc-key": "my",             "color": 'gray'       },
+		   {            "hc-key": "az",             "color": 'gray'       },
+		   {            "hc-key": "am",              "color": 'gray'        },  
+		   
+		   
+		    {            "hc-key": "vn",             "color": 'gray'     },
+		   {            "hc-key": "tj",            "color": 'orange'        },
+		   {            "hc-key": "uz",              "color": 'gray'       },
+		   {            "hc-key": "tl",              "color": 'gray'      },
+		   {            "hc-key": "kh",             "color": 'gray'       },
+		   {            "hc-key": "bt",              "color": 'gray'      },  
+		   
+		   
+		   
+		      
+		    {            "hc-key": "ge",             "color": 'gray'        },
+		   {            "hc-key": "kz",            "color": 'yellow'       },
+		   {            "hc-key": "il",               "color": 'gray'      },
+		   {            "hc-key": "sy",             "color": 'gray'        },
+		   {            "hc-key": "jo",              "color": 'gray'       },
+		   {            "hc-key": "tm",              "color": 'gray'       },  
+		   
+		   
+		   
+		      
+		    {            "hc-key": "cnm",             "color": 'gray'       },
+		   {            "hc-key": "mn",            "color": 'blue'        },
+		   {            "hc-key": "kw",              "color": 'gray'       },
+		   {            "hc-key": "iq",              "color": 'gray'        },
+		   {            "hc-key": "ae",              "color": 'gray'      },
+		   {            "hc-key": "la",             "color": 'gray'       },  
+		   
+		   
+		   
+		    
+		    {            "hc-key": "pk",             "color": 'gray'        },
+		   {            "hc-key": "jk",            "color": 'blue'        },
+		   {            "hc-key": "qa",               "color": 'gray'       },
+		   {            "hc-key": "tr",              "color": 'gray'       },
+		   {            "hc-key": "bn",            "color": 'gray'      },
+		   {            "hc-key": "af",            "color": 'gray'      },  
+		   
+		   
+		      
+		    
+		    {            "hc-key": "kp",              "color": 'gray'        },
+		   {            "hc-key": "lb",            "color": 'gray'       },
+		   {            "hc-key": "nc",               "color": 'gray'       },
+		   {            "hc-key": "cy",               "color": 'gray'      },
+		   {            "hc-key": "tw",              "color": 'gray'       },
+		   {            "hc-key": "np",            "color": 'gray'     },  
+		   
+		      
+		    
+		    {            "hc-key": "lk",             "color": 'gray'       },
+		   {            "hc-key": "kg",            "color": 'red'       },
+		  
+			
+      ],
+	
+			
+			
+			   nullColor: 'gray',
+			
+            states: {
+                hover: {
+                    //color: '#BADA55'
+					color: 'red'
+                }
+            },
+            dataLabels: {
+                enabled: false,
+				inside: true
+            },
+            enableMouseTracking: true,  //erik
+			linecap: 'squere',
+			 borderColor: 'black',
+			  showInLegend: false,
+			
+			/*			
+            accessibility: {
+                point: {
+                    valueDescriptionFormat: '{xDescription}, {point.value}' + '&#8451'
+                }
+            }
+			*/
+			
+        }, 
+		
+		
+		
+		
+		
+		{
+            name: 'Supported Countries',
+            type: 'mappoint',
+            showInLegend: true,
+			enableMouseTracking: true,
+		
+			tooltip:true,
+	
+	
+	
+	
+	
+	
+	
+	
+//plotoptions supported countries only
+
+plotOptions: {
+                series: {
+				enableMouseTracking: false,
+                 states: {
+                      inactive: {
+                        opacity: 1
+                      }
+                    },
+                    events: {
+					
+                        click: function (e) {
+
+                            var text = '<b>' +  e.point.name+'</b><br>Latitude:Longitude: '+  e.point.lat + ':'+ e.point.lon;
+                            
+                            //+ Capital.name + '<br>';
+                          // + this.lat + '<br>';
+                            
+                            //+ e.point.name + ' (' + e.point.value + '/km²)';
+                           
+					// see https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/maps/plotoptions/series-events-click/
+                           
+                            if (!this.chart.clickLabel) {
+                                this.chart.clickLabel = this.chart.renderer
+                                    .label(text, 0, 250)
+                                    .css({
+                                        width: '180px'
+                                    })
+                                    .add();
+                            } else {
+                                this.chart.clickLabel.attr({
+                                    text: text
+                                });
+                            }
+                        }
+                    }//events
+                }
+            },
+
+
+			
+			
+		
+			/*
+			
+			 states: {  //no action
+                hover: {
+                    color: '#BADA55',
+					//color: 'blue'
+                }
+            },
+			*/
+					
+				
+				
+				   marker: {
+				  // id: graphicName,
+				//	symbol: `url(https://www.highcharts.com/samples/graphics/${graphicName}.png)`,
+				
+					//symbol: `url(https://www.soeberg.info/images/${point.name}.png)`,
+				   
+
+			//symbol: 'url(https://www.soeberg.info/images/no.png)',   //this is ok, but hardcoded
+			symbol: 'url(https://www.soeberg.info/images/ug.png)',   //this is ok, but hardcoded
+			
+	
+              width: 22,
+              height: 22
+            },
+				
+				
+            dataLabels: {
+                crop: true,
+                format: '<span>{key}</span><br><span>{point.custom.label}' +  '&#8451' +'</span>'
+            },
+			/*
+          accessibility: {
+                point: {
+                   valueDescriptionFormat: '{xDescription}, {point.temp}' + '&#8451' 
+              }
+            }
+			*/
+        }]  //supported data
+    });
+
+})();
+
+	
+
+
+</script>
+
+
+ </html>
+
+
